@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор: Вытяну ли я четверть?</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        
+        /* Мобильный контейнер 420px */
+        .mobile-container {
+            width: 100%; max-width: 420px; background: #fff; border-radius: 24px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.08); overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white; padding: 30px 25px; text-align: center;
+        }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .header p { font-size: 15px; opacity: 0.95; }
+
+        .content { padding: 25px; }
+
+        .input-group { margin-bottom: 18px; }
+        .input-group label { display: block; font-size: 14px; color: #666; margin-bottom: 8px; font-weight: 600; }
+        
+        input[type="number"] {
+            width: 100%; padding: 14px 16px; border: 2px solid #eef0f6; border-radius: 14px;
+            font-size: 17px; outline: none; transition: all 0.3s; background: #fafbfc;
+        }
+        input[type="number"]:focus { border-color: #4facfe; background: #fff; }
+        
+        /* Убираем стрелочки у number input */
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        .btn {
+            width: 100%; padding: 16px; border: none; border-radius: 14px;
+            font-size: 16px; font-weight: 700; cursor: pointer; transition: transform 0.1s; margin-top: 8px;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-calc { background: #4facfe; color: white; box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4); }
+        .btn-reset { background: transparent; color: #888; margin-top: 12px; font-weight: 600; }
+
+        .result-box {
+            margin-top: 25px; padding: 20px; border-radius: 16px; text-align: center;
+            display: none; animation: slideUp 0.4s ease-out;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .res-ok { background: #e6fffa; color: #047857; border: 1px solid #a7f3d0; }
+        .res-warn { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+        .res-bad { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+        .res-title { font-size: 19px; font-weight: 800; margin-bottom: 6px; }
+        .res-text { font-size: 15px; line-height: 1.5; }
+        .res-highlight { font-weight: 700; font-size: 1.1em; }
+
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #aaa; }
+    </style>
+</head>
+<body>
+
+<div class="mobile-container">
+    <div class="header">
+        <h1>🎯 Спасение четверти</h1>
+        <p>Честный расчет твоих шансов</p>
+    </div>
+
+    <div class="content">
+        <div class="input-group">
+            <label>Текущий средний балл</label>
+            <input type="number" id="currAvg" placeholder="Например: 3.7" step="0.1" min="1" max="5">
+        </div>
+
+        <div class="input-group">
+            <label>Сколько уже примерно оценок?</label>
+            <input type="number" id="pastCount" placeholder="Например: 12" step="1" min="1" max="100">
+            <small style="color:#999; font-size:12px; margin-top:4px; display:block;">Нужно для точного расчета</small>
+        </div>
+
+        <div class="input-group">
+            <label>Желаемая оценка за четверть</label>
+            <input type="number" id="target" placeholder="Например: 4" step="1" min="2" max="5">
+        </div>
+
+        <div class="input-group">
+            <label>Осталось уроков (оценок)</label>
+            <input type="number" id="remain" placeholder="Например: 6" step="1" min="1" max="50">
+        </div>
+
+        <button class="btn btn-calc" onclick="calc()">Рассчитать</button>
+        <button class="btn btn-reset" onclick="resetAll()">Сбросить всё</button>
+
+        <div id="resBox" class="result-box">
+            <div id="resTitle" class="res-title"></div>
+            <div id="resText" class="res-text"></div>
+        </div>
+    </div>
+    
+    <div class="footer">Данные сохраняются локально на устройстве</div>
+</div>
+
+<script>
+    // ID полей для сохранения
+    const fields = ['currAvg', 'pastCount', 'target', 'remain'];
+    const resBox = document.getElementById('resBox');
+    const resTitle = document.getElementById('resTitle');
+    const resText = document.getElementById('resText');
+
+    // Загрузка и автосохранение
+    window.onload = () => {
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if(localStorage.getItem(id)) el.value = localStorage.getItem(id);
+            el.addEventListener('input', () => localStorage.setItem(id, el.value));
+        });
+    };
+
+    function resetAll() {
+        fields.forEach(id => {
+            document.getElementById(id).value = '';
+            localStorage.removeItem(id);
+        });
+        resBox.style.display = 'none';
+    }
+
+    function calc() {
+        const curr = parseFloat(document.getElementById('currAvg').value);
+        const past = parseInt(document.getElementById('pastCount').value);
+        const targ = parseInt(document.getElementById('target').value);
+        const rem = parseInt(document.getElementById('remain').value);
+
+        if(!curr || !past || !targ || !rem) {
+            alert("Заполни все поля для точного расчета!");
+            return;
+        }
+
+        // Математика:
+        // Сумма текущих баллов = curr * past
+        // Нужная итоговая сумма = targ * (past + rem)
+        // Дефицит баллов = Нужная - Текущая
+        // Необходимый средний за остаток = Дефицит / rem
+        
+        const currentSum = curr * past;
+        const neededTotalSum = targ * (past + rem);
+        const deficit = neededTotalSum - currentSum;
+        const neededAvg = deficit / rem;
+
+        resBox.style.display = 'block';
+        resBox.className = 'result-box'; // сброс классов
+
+        let title = '', text = '', type = '';
+
+        if (neededAvg <= 2) {
+            // Даже двойки хватит
+            title = "🟢 Четверть спасена!";
+            text = `Даже если получать минимальные оценки, ты вытянешь на <b>${targ}</b>. Можно выдохнуть.`;
+            type = 'res-ok';
+        } else if (neededAvg > 5) {
+            // Невозможно даже с пятерками
+            title = "🔴 Математически невозможно";
+            text = `Даже если за все ${rem} уроков получить пятерки, средний будет максимум <b>${((currentSum + 5*rem)/(past+rem)).toFixed(2)}</b>. До ${targ} не дотянуть.`;
+            type = 'res-bad';
+        } else {
+            // Реалистичный сценарий
+            title = "🟡 Нужно постараться";
+            const roundedNeed = Math.ceil(neededAvg * 10) / 10;
+            text = `Тебе нужно учиться на <span class="res-highlight">${roundedNeed}</span> за каждый оставшийся урок.<br><br>`;
+            
+            if(roundedNeed <= 3) text += "Это реально, если не пропускать и стараться.";
+            else if(roundedNeed <= 4) text += "Придется попотеть, но это выполнимо.";
+            else text += "Почти одни пятерки — задача со звездочкой ⭐";
+            
+            type = 'res-warn';
+        }
+
+        resBox.classList.add(type);
+        resTitle.innerHTML = title;
+        resText.innerHTML = text;
+    }
+</script>
+
+</body>
+</html>
